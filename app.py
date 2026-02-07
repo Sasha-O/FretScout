@@ -7,8 +7,10 @@ from typing import Optional
 import streamlit as st
 
 from fretscout import alerts as alert_service
+from fretscout.config import get_secret
 from fretscout.connectors import stub as stub_connector
 from fretscout.db import initialize_database
+from fretscout.sources import ebay as ebay_source
 from fretscout.valuation import score_listings
 
 
@@ -51,6 +53,17 @@ def search_page() -> None:
     st.title("FretScout")
     st.write("Discover used & vintage guitars. Click out to buy on source sites.")
 
+    category_options = {
+        "All guitars & basses": 3858,
+        "Electric guitars": 33034,
+        "Acoustic guitars": 33021,
+        "Bass guitars": 4713,
+    }
+    selected_category = st.sidebar.selectbox(
+        "Category", list(category_options.keys())
+    )
+    category_id = category_options.get(selected_category)
+
     query = st.text_input("Search used/vintage listings", placeholder="e.g. Fender Stratocaster")
     max_price = st.number_input("Max price (optional)", min_value=0.0, value=0.0, step=50.0)
 
@@ -67,7 +80,24 @@ def search_page() -> None:
             st.warning("Enter a search query to see results.")
             return
 
-        listings = stub_connector.fetch_listings(query)
+        client_id = get_secret("EBAY_CLIENT_ID")
+        client_secret = get_secret("EBAY_CLIENT_SECRET")
+        if not client_id or not client_secret:
+            st.warning(
+                "eBay not configured; set EBAY_CLIENT_ID/EBAY_CLIENT_SECRET to enable live search."
+            )
+            listings = stub_connector.fetch_listings(query)
+        else:
+            try:
+                listings = ebay_source.search_ebay_listings(
+                    query,
+                    category_ids=[category_id] if category_id else None,
+                    max_price=max_price_value,
+                )
+            except Exception as exc:  # pragma: no cover - UI guardrail
+                st.error(f"eBay search failed; showing sample listings. ({exc})")
+                listings = stub_connector.fetch_listings(query)
+
         if max_price_value is not None:
             listings = [
                 listing
