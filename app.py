@@ -77,6 +77,11 @@ def search_page() -> None:
 
     st.title("FretScout")
     st.write("Discover used & vintage guitars. Click out to buy on source sites.")
+    client_id = get_secret("EBAY_CLIENT_ID")
+    client_secret = get_secret("EBAY_CLIENT_SECRET")
+    demo_mode = not client_id or not client_secret
+    if demo_mode:
+        st.info("eBay live search is not configured on this deployment yet.")
 
     category_options = {
         "All guitars & basses": 3858,
@@ -103,12 +108,8 @@ def search_page() -> None:
             st.warning("Enter a search query to see results.")
             return
 
-        client_id = get_secret("EBAY_CLIENT_ID")
-        client_secret = get_secret("EBAY_CLIENT_SECRET")
-        if not client_id or not client_secret:
-            st.warning(
-                "eBay not configured; set EBAY_CLIENT_ID/EBAY_CLIENT_SECRET to enable live search."
-            )
+        if demo_mode:
+            st.warning("Showing demo listings while eBay search is unavailable.")
             listings = stub_connector.fetch_listings(query)
         else:
             try:
