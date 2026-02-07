@@ -61,6 +61,26 @@ def test_url_hash_is_deterministic() -> None:
     assert result_a.listing_id.startswith("url:")
 
 
+def test_url_hash_ignores_query_order() -> None:
+    listing_a = Listing(
+        listing_id="",
+        source="",
+        title="Test",
+        url="https://example.com/Listing/AB12?a=1&b=2",
+    )
+    listing_b = Listing(
+        listing_id="",
+        source="",
+        title="Test",
+        url="https://example.com/Listing/AB12?b=2&a=1",
+    )
+
+    result_a = ensure_listing_id(listing_a)
+    result_b = ensure_listing_id(listing_b)
+
+    assert result_a.listing_id == result_b.listing_id
+
+
 def test_url_hash_preserves_case_sensitive_paths() -> None:
     listing_a = Listing(
         listing_id="",
