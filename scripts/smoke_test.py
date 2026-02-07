@@ -38,7 +38,7 @@ def main() -> int:
             if not isinstance(estimated_value, str) or not isinstance(deal_score, str):
                 print("Smoke test failed: valuation outputs are not strings.")
                 return 1
-            if listing.deal_confidence not in {"High", "Medium", "Low"}:
+            if listing.deal_confidence not in {"high", "medium", "low"}:
                 print("Smoke test failed: deal confidence not assigned.")
                 return 1
 
