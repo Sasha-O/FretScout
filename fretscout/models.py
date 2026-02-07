@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl
 
 
 class Listing(BaseModel):
@@ -20,7 +20,7 @@ class Listing(BaseModel):
     location: Optional[str] = None
     url: HttpUrl
     source: str
-    created_at: datetime = datetime.utcnow()
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class SavedAlert(BaseModel):
@@ -29,7 +29,7 @@ class SavedAlert(BaseModel):
     alert_id: Optional[int] = None
     query: str
     max_price: Optional[float] = None
-    created_at: datetime = datetime.utcnow()
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class AlertEvent(BaseModel):
@@ -39,5 +39,4 @@ class AlertEvent(BaseModel):
     alert_id: int
     listing_id: Optional[str] = None
     message: str
-    created_at: datetime = datetime.utcnow()
-
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
