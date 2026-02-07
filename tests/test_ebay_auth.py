@@ -70,6 +70,25 @@ def test_request_building_sandbox(monkeypatch, tmp_path) -> None:
     assert captured.request.full_url == ebay_auth.EBAY_TOKEN_ENDPOINTS["sandbox"]
 
 
+def test_request_building_override_env(monkeypatch, tmp_path) -> None:
+    captured = SimpleNamespace(request=None)
+
+    def fake_urlopen(request, timeout=30):
+        captured.request = request
+        return FakeResponse({"access_token": "token", "expires_in": 3600, "token_type": "Bearer"})
+
+    monkeypatch.setenv("EBAY_CLIENT_ID", "client-id")
+    monkeypatch.setenv("EBAY_CLIENT_SECRET", "client-secret")
+    monkeypatch.delenv("EBAY_ENV", raising=False)
+    monkeypatch.setattr(ebay_auth, "_DISK_CACHE_PATH", tmp_path / "ebay_token.json")
+    monkeypatch.setattr(ebay_auth.urllib.request, "urlopen", fake_urlopen)
+    ebay_auth.clear_token_cache()
+
+    ebay_auth.get_ebay_access_token(env="sandbox")
+
+    assert captured.request.full_url == ebay_auth.EBAY_TOKEN_ENDPOINTS["sandbox"]
+
+
 def test_caching_returns_cached_token(monkeypatch, tmp_path) -> None:
     calls = {"count": 0}
 

@@ -57,11 +57,13 @@ def clear_token_cache() -> None:
     _token_cache.clear()
 
 
-def get_ebay_access_token(scopes: Optional[Iterable[str]] = None) -> str:
+def get_ebay_access_token(
+    scopes: Optional[Iterable[str]] = None, *, env: Optional[str] = None
+) -> str:
     """Return a cached or newly minted eBay OAuth access token."""
 
     scopes_tuple = _normalize_scopes(scopes)
-    env = get_ebay_env()
+    env = _resolve_env(env)
     now = time.time()
 
     cache_key: Optional[tuple[str, tuple[str, ...], str]] = None
@@ -86,6 +88,15 @@ def get_ebay_access_token(scopes: Optional[Iterable[str]] = None) -> str:
         _token_cache[cache_key] = token_entry
         _save_disk_cache(token_entry)
     return token_entry.token
+
+
+def _resolve_env(env: Optional[str]) -> Literal["production", "sandbox"]:
+    if env is None:
+        return get_ebay_env()
+    normalized = env.strip().lower()
+    if normalized in {EBAY_ENV_PRODUCTION, EBAY_ENV_SANDBOX}:
+        return normalized  # type: ignore[return-value]
+    raise ValueError("env must be 'production' or 'sandbox'.")
 
 
 def _normalize_scopes(scopes: Optional[Iterable[str]]) -> tuple[str, ...]:
