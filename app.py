@@ -13,6 +13,7 @@ from fretscout.dedup import dedupe_listings
 from fretscout.db import initialize_database
 from fretscout.listing_identity import ensure_listing_ids
 from fretscout.sources import ebay as ebay_source
+from fretscout.sort_filter import filter_listings, sort_listings
 from fretscout.valuation import score_listings
 
 
@@ -22,6 +23,15 @@ def format_price(value: Optional[float]) -> str:
     if value is None:
         return "N/A"
     return f"${value:,.2f}"
+
+
+def format_percent(value: Optional[float]) -> str:
+    """Format a numeric value as a signed percent string."""
+
+    if value is None:
+        return "N/A"
+    sign = "+" if value > 0 else ""
+    return f"{sign}{value:.1f}%"
 
 
 def render_listing(listing) -> None:
@@ -37,14 +47,27 @@ def render_listing(listing) -> None:
         st.write(f"**Condition:** {listing.condition}")
     if listing.location:
         st.write(f"**Location:** {listing.location}")
-    if listing.deal_label:
+    if listing.deal_score is not None:
         st.write(
-            f"**Deal score:** {listing.deal_label} "
+            f"**Deal score:** {listing.deal_score:.1f} "
             f"(Confidence: {listing.deal_confidence})"
         )
     else:
         st.write("**Deal score:** Not enough data yet.")
     st.caption("Deal Score uses item price only; shipping excluded.")
+
+    with st.expander("Why this score?"):
+        st.write(f"**Listing price used:** {format_price(listing.price)} (price only)")
+        st.write(
+            f"**Reference (median) price:** {format_price(listing.deal_reference_price)}"
+        )
+        st.write(
+            f"**Percent difference:** {format_percent(listing.deal_percent_diff)} vs median"
+        )
+        confidence_label = listing.deal_confidence or "unknown"
+        reasons = listing.deal_confidence_reasons or ["no confidence data"]
+        st.write(f"**Confidence:** {confidence_label}")
+        st.write("**Confidence reasons:** " + ", ".join(reasons))
     st.markdown(f"[View listing]({listing.url})")
     st.divider()
 
@@ -61,9 +84,7 @@ def search_page() -> None:
         "Acoustic guitars": 33021,
         "Bass guitars": 4713,
     }
-    selected_category = st.sidebar.selectbox(
-        "Category", list(category_options.keys())
-    )
+    selected_category = st.sidebar.selectbox("Category", list(category_options.keys()))
     category_id = category_options.get(selected_category)
 
     query = st.text_input("Search used/vintage listings", placeholder="e.g. Fender Stratocaster")
@@ -120,7 +141,21 @@ def search_page() -> None:
         )
 
     if "listings" in st.session_state:
+        st.sidebar.subheader("Results")
+        sort_mode = st.sidebar.selectbox(
+            "Sort by",
+            ["Relevance", "Price (low→high)", "Deal Score (best→worst)"],
+        )
+        min_score = st.sidebar.slider("Min Deal Score", 0, 100, 0)
+        high_conf_only = st.sidebar.checkbox("High confidence only", value=False)
+
         listings = st.session_state.listings
+        listings = filter_listings(
+            listings,
+            min_score=min_score,
+            high_conf_only=high_conf_only,
+        )
+        listings = sort_listings(listings, sort_mode=sort_mode)
         if listings:
             st.write(f"Found {len(listings)} listing(s).")
             for listing in listings:

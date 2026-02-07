@@ -26,7 +26,11 @@ class Listing(BaseModel):
     source: str
     seller: Optional[str] = None
     deal_label: Optional[Literal["Good", "Fair", "High"]] = None
-    deal_confidence: Optional[Literal["High", "Medium", "Low"]] = None
+    deal_score: Optional[float] = None
+    deal_reference_price: Optional[float] = None
+    deal_percent_diff: Optional[float] = None
+    deal_confidence: Optional[Literal["high", "medium", "low"]] = None
+    deal_confidence_reasons: Optional[list[str]] = None
     item_creation_date: Optional[str] = None
     item_end_date: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

@@ -102,9 +102,9 @@ def test_confidence_levels() -> None:
     scored = score_listings(listings)
     confidence = {listing.listing_id: listing.deal_confidence for listing in scored}
 
-    assert confidence["l1"] == "High"
-    assert confidence["l2"] == "Medium"
-    assert confidence["l3"] == "Low"
+    assert confidence["l1"] == "high"
+    assert confidence["l2"] == "medium"
+    assert confidence["l3"] == "low"
 
 
 def test_shipping_does_not_change_scoring() -> None:
@@ -128,6 +128,9 @@ def test_shipping_does_not_change_scoring() -> None:
         listing.listing_id: (
             listing.deal_label,
             listing.deal_confidence,
+            listing.deal_score,
+            listing.deal_reference_price,
+            listing.deal_percent_diff,
         )
         for listing in baseline_scored
     }
@@ -135,8 +138,45 @@ def test_shipping_does_not_change_scoring() -> None:
         listing.listing_id: (
             listing.deal_label,
             listing.deal_confidence,
+            listing.deal_score,
+            listing.deal_reference_price,
+            listing.deal_percent_diff,
         )
         for listing in varied_scored
     }
 
     assert baseline_map == varied_map
+
+
+def test_explanation_fields_present_with_price() -> None:
+    """Listings with price should have reference and percent diff."""
+
+    listings = [
+        build_listing("l1", "Listing 1", 100.0, 10.0),
+        build_listing("l2", "Listing 2", 150.0, 10.0),
+        build_listing("l3", "Listing 3", 200.0, 10.0),
+    ]
+
+    scored = score_listings(listings)
+    listing = scored[0]
+
+    assert listing.deal_reference_price is not None
+    assert listing.deal_percent_diff is not None
+    assert listing.deal_score is not None
+
+
+def test_explanation_fields_missing_without_price() -> None:
+    """Listings without price should not have explanation fields."""
+
+    listings = [
+        build_listing("l1", "Listing 1", None, 10.0),
+        build_listing("l2", "Listing 2", 150.0, 10.0),
+        build_listing("l3", "Listing 3", 200.0, 10.0),
+    ]
+
+    scored = score_listings(listings)
+    listing = next(item for item in scored if item.listing_id == "l1")
+
+    assert listing.deal_reference_price is None
+    assert listing.deal_percent_diff is None
+    assert listing.deal_score is None

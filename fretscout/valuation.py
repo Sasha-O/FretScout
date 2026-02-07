@@ -46,10 +46,25 @@ def _confidence_level(listing: Listing) -> str:
     has_price = _parse_price(listing.price) is not None
 
     if has_title and has_condition and has_price:
-        return "High"
+        return "high"
     if has_title and has_price:
-        return "Medium"
-    return "Low"
+        return "medium"
+    return "low"
+
+
+def _confidence_reasons(listing: Listing) -> list[str]:
+    """Return short reasons describing the confidence level."""
+
+    reasons: list[str] = []
+    if not listing.title or not listing.title.strip():
+        reasons.append("missing title")
+    if not listing.condition or not listing.condition.strip():
+        reasons.append("missing condition")
+    if _parse_price(listing.price) is None:
+        reasons.append("missing price")
+    if not reasons:
+        reasons.append("complete listing details")
+    return reasons
 
 
 def score_listings(listings: Iterable[Listing]) -> list[Listing]:
@@ -70,19 +85,30 @@ def score_listings(listings: Iterable[Listing]) -> list[Listing]:
         price = _listing_price(listing)
         if benchmark is None or price is None:
             label = None
-        elif price <= benchmark * 0.90:
-            label = "Good"
-        elif price < benchmark * 1.10:
-            label = "Fair"
+            deal_reference_price = None
+            deal_percent_diff = None
+            deal_score = None
         else:
-            label = "High"
+            deal_reference_price = float(benchmark)
+            deal_percent_diff = ((price - benchmark) / benchmark) * 100
+            deal_score = max(0.0, min(100.0, round(100 - deal_percent_diff, 1)))
+            if price <= benchmark * 0.90:
+                label = "Good"
+            elif price < benchmark * 1.10:
+                label = "Fair"
+            else:
+                label = "High"
 
         confidence = _confidence_level(listing)
         scored.append(
             listing.model_copy(
                 update={
                     "deal_label": label,
+                    "deal_score": deal_score,
+                    "deal_reference_price": deal_reference_price,
+                    "deal_percent_diff": deal_percent_diff,
                     "deal_confidence": confidence,
+                    "deal_confidence_reasons": _confidence_reasons(listing),
                 }
             )
         )
