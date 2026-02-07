@@ -9,6 +9,7 @@ import streamlit as st
 from fretscout import alerts as alert_service
 from fretscout.connectors import stub as stub_connector
 from fretscout.db import initialize_database
+from fretscout.valuation import score_listings
 
 
 def format_price(value: Optional[float]) -> str:
@@ -32,6 +33,13 @@ def render_listing(listing) -> None:
         st.write(f"**Condition:** {listing.condition}")
     if listing.location:
         st.write(f"**Location:** {listing.location}")
+    if listing.deal_label:
+        st.write(
+            f"**Deal score:** {listing.deal_label} "
+            f"(Confidence: {listing.deal_confidence})"
+        )
+    else:
+        st.write("**Deal score:** Not enough data yet.")
     st.markdown(f"[View listing]({listing.url})")
     st.divider()
 
@@ -63,8 +71,10 @@ def search_page() -> None:
             listings = [
                 listing
                 for listing in listings
-                if listing.all_in_price <= max_price_value
+                if listing.all_in_price is not None
+                and listing.all_in_price <= max_price_value
             ]
+        listings = score_listings(listings)
         st.session_state.listings = listings
         st.session_state.query = query
 

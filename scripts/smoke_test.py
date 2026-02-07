@@ -28,11 +28,15 @@ def main() -> int:
             print("Smoke test failed: no listings returned from stub connector.")
             return 1
 
-        for listing in listings:
+        scored_listings = fretscout.valuation.score_listings(listings)
+        for listing in scored_listings:
             estimated_value = fretscout.valuation.estimate_value(listing)
             deal_score = fretscout.valuation.deal_score(listing)
             if not isinstance(estimated_value, str) or not isinstance(deal_score, str):
                 print("Smoke test failed: valuation outputs are not strings.")
+                return 1
+            if listing.deal_confidence not in {"High", "Medium", "Low"}:
+                print("Smoke test failed: deal confidence not assigned.")
                 return 1
 
         saved_alert = fretscout.alerts.save_alert(

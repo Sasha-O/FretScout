@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, HttpUrl
 
@@ -13,13 +13,15 @@ class Listing(BaseModel):
 
     listing_id: str
     title: str
-    price: float
-    shipping: float
-    all_in_price: float
+    price: Optional[float] = None
+    shipping: Optional[float] = None
+    all_in_price: Optional[float] = None
     condition: Optional[str] = None
     location: Optional[str] = None
     url: HttpUrl
     source: str
+    deal_label: Optional[Literal["Good", "Fair", "High"]] = None
+    deal_confidence: Optional[Literal["High", "Medium", "Low"]] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
