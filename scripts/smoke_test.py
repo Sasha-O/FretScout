@@ -15,6 +15,7 @@ import fretscout.db
 import fretscout.ebay_auth
 import fretscout.models
 import fretscout.valuation
+from fretscout.sources import ebay as ebay_source
 from fretscout.config import get_secret
 
 
@@ -58,6 +59,20 @@ def main() -> int:
         if not token:
             print("Smoke test failed: eBay OAuth token missing.")
             return 1
+        if get_secret("FRETSCOUNT_EBAY_SEARCH_SMOKE") == "1":
+            try:
+                results = ebay_source.search_ebay_listings(
+                    "fender", limit=1
+                )
+            except Exception as exc:
+                print(f"Smoke test failed: eBay search error: {exc}")
+                return 1
+            if not results:
+                print("Smoke test warning: eBay search returned 0 listings.")
+            else:
+                print("Smoke test: eBay search returned listings.")
+        else:
+            print("(skipping eBay search check)")
     else:
         print("(skipping eBay OAuth check — no credentials set)")
 
