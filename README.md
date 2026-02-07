@@ -12,6 +12,13 @@ In development.
 1. Install dependencies: `pip install -r requirements.txt`
 2. Start the app: `streamlit run app.py`
 
+## CI / Smoke Test
+Run the smoke test script locally:
+
+```
+python scripts/smoke_test.py
+```
+
 ## Project structure
 ```
 .
