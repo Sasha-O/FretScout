@@ -12,8 +12,10 @@ sys.path.insert(0, str(PROJECT_ROOT))
 import fretscout.alerts
 import fretscout.connectors.stub
 import fretscout.db
+import fretscout.ebay_auth
 import fretscout.models
 import fretscout.valuation
+from fretscout.config import get_secret
 
 
 def main() -> int:
@@ -48,6 +50,16 @@ def main() -> int:
         if not events:
             print("Smoke test failed: no alert events generated.")
             return 1
+
+    client_id = get_secret("EBAY_CLIENT_ID")
+    client_secret = get_secret("EBAY_CLIENT_SECRET")
+    if client_id and client_secret:
+        token = fretscout.ebay_auth.get_ebay_access_token()
+        if not token:
+            print("Smoke test failed: eBay OAuth token missing.")
+            return 1
+    else:
+        print("(skipping eBay OAuth check — no credentials set)")
 
     print("SMOKE TEST PASSED")
     return 0
