@@ -37,7 +37,8 @@ def _normalize_url(value: str) -> str:
         }:
             continue
         filtered_pairs.append((key, val))
-    query = urlencode(filtered_pairs, doseq=True)
+    sorted_pairs = sorted(filtered_pairs, key=lambda pair: (pair[0].lower(), pair[0], pair[1]))
+    query = urlencode(sorted_pairs, doseq=True)
     # Drop fragment since it is rarely identity-bearing.
     return urlunsplit((scheme, netloc, path, query, ""))
 
