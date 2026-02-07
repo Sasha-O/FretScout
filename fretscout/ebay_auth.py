@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import time
 import urllib.error
@@ -33,9 +34,10 @@ class _TokenCacheEntry:
     token_type: str
     scopes: tuple[str, ...]
     env: str
+    client_id_fingerprint: str
 
 
-_token_cache: dict[tuple[str, tuple[str, ...]], _TokenCacheEntry] = {}
+_token_cache: dict[tuple[str, tuple[str, ...], str], _TokenCacheEntry] = {}
 
 
 def get_ebay_env() -> Literal["production", "sandbox"]:
@@ -60,21 +62,29 @@ def get_ebay_access_token(scopes: Optional[Iterable[str]] = None) -> str:
 
     scopes_tuple = _normalize_scopes(scopes)
     env = get_ebay_env()
-    cache_key = (env, scopes_tuple)
     now = time.time()
 
-    cached = _token_cache.get(cache_key)
-    if cached and cached.expires_at - now > _EXPIRY_BUFFER_SECONDS:
-        return cached.token
+    cache_key: Optional[tuple[str, tuple[str, ...], str]] = None
+    try:
+        fingerprint = _client_id_fingerprint()
+        cache_key = (env, scopes_tuple, fingerprint)
+    except ValueError:
+        fingerprint = ""
 
-    cached = _load_disk_cache(cache_key, now)
-    if cached:
-        _token_cache[cache_key] = cached
-        return cached.token
+    if cache_key:
+        cached = _token_cache.get(cache_key)
+        if cached and cached.expires_at - now > _EXPIRY_BUFFER_SECONDS:
+            return cached.token
+
+        cached = _load_disk_cache(cache_key, now)
+        if cached:
+            _token_cache[cache_key] = cached
+            return cached.token
 
     token_entry = _request_new_token(env, scopes_tuple)
-    _token_cache[cache_key] = token_entry
-    _save_disk_cache(token_entry)
+    if cache_key:
+        _token_cache[cache_key] = token_entry
+        _save_disk_cache(token_entry)
     return token_entry.token
 
 
@@ -138,6 +148,7 @@ def _request_new_token(env: str, scopes: tuple[str, ...]) -> _TokenCacheEntry:
         token_type=str(token_type),
         scopes=scopes,
         env=env,
+        client_id_fingerprint=_hash_client_id(client_id),
     )
 
 
@@ -147,8 +158,19 @@ def _build_basic_auth(client_id: str, client_secret: str) -> str:
     return f"Basic {encoded}"
 
 
+def _client_id_fingerprint() -> str:
+    client_id = get_secret("EBAY_CLIENT_ID")
+    if not client_id:
+        raise ValueError("Missing eBay client ID. Set EBAY_CLIENT_ID.")
+    return _hash_client_id(client_id)
+
+
+def _hash_client_id(client_id: str) -> str:
+    return hashlib.sha256(client_id.encode("utf-8")).hexdigest()[:12]
+
+
 def _load_disk_cache(
-    cache_key: tuple[str, tuple[str, ...]], now: float
+    cache_key: tuple[str, tuple[str, ...], str], now: float
 ) -> Optional[_TokenCacheEntry]:
     try:
         if not _DISK_CACHE_PATH.exists():
@@ -157,6 +179,8 @@ def _load_disk_cache(
         if payload.get("env") != cache_key[0]:
             return None
         if tuple(payload.get("scopes", [])) != cache_key[1]:
+            return None
+        if payload.get("client_id_fingerprint") != cache_key[2]:
             return None
         expires_at = float(payload.get("expires_at", 0))
         if expires_at - now <= _EXPIRY_BUFFER_SECONDS:
@@ -171,6 +195,7 @@ def _load_disk_cache(
             token_type=str(token_type),
             scopes=cache_key[1],
             env=cache_key[0],
+            client_id_fingerprint=cache_key[2],
         )
     except Exception:
         return None
@@ -185,6 +210,7 @@ def _save_disk_cache(token_entry: _TokenCacheEntry) -> None:
             "token_type": token_entry.token_type,
             "scopes": list(token_entry.scopes),
             "env": token_entry.env,
+            "client_id_fingerprint": token_entry.client_id_fingerprint,
         }
         _DISK_CACHE_PATH.write_text(json.dumps(payload))
     except Exception:
