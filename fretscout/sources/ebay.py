@@ -79,13 +79,13 @@ def search_ebay_listings(
         max_price=max_price,
         marketplace_id=marketplace_id or _default_marketplace(),
     ).clamp()
-    env = env or ebay_auth.get_ebay_env()
-    base_url = _BASE_URLS.get(env)
+    env_effective = env or ebay_auth.get_ebay_env()
+    base_url = _BASE_URLS.get(env_effective)
     if not base_url:
         raise ValueError("env must be 'production' or 'sandbox'.")
 
     request_url = _build_request_url(base_url, params)
-    headers = _build_headers(params.marketplace_id)
+    headers = _build_headers(params.marketplace_id, env=env_effective)
     request = urllib.request.Request(request_url, headers=headers, method="GET")
 
     data = _execute_request_with_retry(request)
@@ -119,8 +119,8 @@ def _format_price(value: float) -> str:
     return f"{float(value):.2f}"
 
 
-def _build_headers(marketplace_id: str) -> dict[str, str]:
-    token = ebay_auth.get_ebay_access_token()
+def _build_headers(marketplace_id: str, *, env: str) -> dict[str, str]:
+    token = ebay_auth.get_ebay_access_token(env=env)
     headers = {
         "Authorization": f"Bearer {token}",
         "Accept": "application/json",

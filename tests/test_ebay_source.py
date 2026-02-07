@@ -56,8 +56,12 @@ def test_request_construction_production(monkeypatch) -> None:
         captured["headers"] = {key.lower(): value for key, value in request.headers.items()}
         return DummyResponse(_fixture_payload())
 
+    def fake_get_token(*, env: str) -> str:
+        captured["token_env"] = env
+        return "TEST_TOKEN"
+
     monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
-    monkeypatch.setattr(ebay_source.ebay_auth, "get_ebay_access_token", lambda: "TEST_TOKEN")
+    monkeypatch.setattr(ebay_source.ebay_auth, "get_ebay_access_token", fake_get_token)
     monkeypatch.setattr(ebay_source, "get_secret", lambda name: None)
 
     ebay_source.search_ebay_listings(
@@ -78,6 +82,7 @@ def test_request_construction_production(monkeypatch) -> None:
     assert query["category_ids"] == ["3858"]
     assert captured["headers"]["authorization"] == "Bearer TEST_TOKEN"
     assert captured["headers"]["x-ebay-c-marketplace-id"] == "EBAY_US"
+    assert captured["token_env"] == "production"
 
 
 def test_request_construction_sandbox(monkeypatch) -> None:
@@ -85,15 +90,22 @@ def test_request_construction_sandbox(monkeypatch) -> None:
 
     def fake_urlopen(request: urllib.request.Request, timeout: int = 30) -> DummyResponse:
         captured["url"] = request.full_url
+        captured["headers"] = {key.lower(): value for key, value in request.headers.items()}
         return DummyResponse(_fixture_payload())
 
+    def fake_get_token(*, env: str) -> str:
+        captured["token_env"] = env
+        return "TEST_TOKEN"
+
     monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
-    monkeypatch.setattr(ebay_source.ebay_auth, "get_ebay_access_token", lambda: "TEST_TOKEN")
+    monkeypatch.setattr(ebay_source.ebay_auth, "get_ebay_access_token", fake_get_token)
     monkeypatch.setattr(ebay_source, "get_secret", lambda name: None)
 
     ebay_source.search_ebay_listings("strat", env="sandbox")
 
     assert "api.sandbox.ebay.com" in captured["url"]
+    assert captured["headers"]["authorization"] == "Bearer TEST_TOKEN"
+    assert captured["token_env"] == "sandbox"
 
 
 def test_response_parsing_and_mapping(monkeypatch) -> None:
@@ -101,7 +113,9 @@ def test_response_parsing_and_mapping(monkeypatch) -> None:
         return DummyResponse(_fixture_payload())
 
     monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
-    monkeypatch.setattr(ebay_source.ebay_auth, "get_ebay_access_token", lambda: "TEST_TOKEN")
+    monkeypatch.setattr(
+        ebay_source.ebay_auth, "get_ebay_access_token", lambda *_, **__: "TEST_TOKEN"
+    )
     monkeypatch.setattr(ebay_source, "get_secret", lambda name: None)
 
     listings = ebay_source.search_ebay_listings("strat", env="production")
@@ -141,7 +155,9 @@ def test_retry_behavior(monkeypatch) -> None:
         return DummyResponse(payload)
 
     monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
-    monkeypatch.setattr(ebay_source.ebay_auth, "get_ebay_access_token", lambda: "TEST_TOKEN")
+    monkeypatch.setattr(
+        ebay_source.ebay_auth, "get_ebay_access_token", lambda *_, **__: "TEST_TOKEN"
+    )
     monkeypatch.setattr(ebay_source, "get_secret", lambda name: None)
 
     listings = ebay_source.search_ebay_listings("strat")
@@ -167,7 +183,9 @@ def test_missing_optional_fields(monkeypatch) -> None:
         return DummyResponse(payload)
 
     monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
-    monkeypatch.setattr(ebay_source.ebay_auth, "get_ebay_access_token", lambda: "TEST_TOKEN")
+    monkeypatch.setattr(
+        ebay_source.ebay_auth, "get_ebay_access_token", lambda *_, **__: "TEST_TOKEN"
+    )
     monkeypatch.setattr(ebay_source, "get_secret", lambda name: None)
 
     listings = ebay_source.search_ebay_listings("strat")
