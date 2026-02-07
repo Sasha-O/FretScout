@@ -9,7 +9,9 @@ import streamlit as st
 from fretscout import alerts as alert_service
 from fretscout.config import get_secret
 from fretscout.connectors import stub as stub_connector
+from fretscout.dedup import dedupe_listings
 from fretscout.db import initialize_database
+from fretscout.listing_identity import ensure_listing_ids
 from fretscout.sources import ebay as ebay_source
 from fretscout.valuation import score_listings
 
@@ -97,6 +99,9 @@ def search_page() -> None:
             except Exception as exc:  # pragma: no cover - UI guardrail
                 st.error(f"eBay search failed; showing sample listings. ({exc})")
                 listings = stub_connector.fetch_listings(query)
+
+        listings = ensure_listing_ids(listings)
+        listings = dedupe_listings(listings)
 
         if max_price_value is not None:
             listings = [
