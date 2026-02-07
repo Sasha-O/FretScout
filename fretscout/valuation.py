@@ -83,11 +83,20 @@ def score_listings(listings: Iterable[Listing]) -> list[Listing]:
     scored: list[Listing] = []
     for listing in listings_list:
         price = _listing_price(listing)
+        reasons = _confidence_reasons(listing)
         if benchmark is None or price is None:
             label = None
             deal_reference_price = None
             deal_percent_diff = None
             deal_score = None
+            confidence = _confidence_level(listing)
+        elif benchmark <= 0:
+            label = None
+            deal_reference_price = float(benchmark)
+            deal_percent_diff = None
+            deal_score = None
+            confidence = "low"
+            reasons.append("zero reference price")
         else:
             deal_reference_price = float(benchmark)
             deal_percent_diff = ((price - benchmark) / benchmark) * 100
@@ -98,8 +107,8 @@ def score_listings(listings: Iterable[Listing]) -> list[Listing]:
                 label = "Fair"
             else:
                 label = "High"
+            confidence = _confidence_level(listing)
 
-        confidence = _confidence_level(listing)
         scored.append(
             listing.model_copy(
                 update={
@@ -108,7 +117,7 @@ def score_listings(listings: Iterable[Listing]) -> list[Listing]:
                     "deal_reference_price": deal_reference_price,
                     "deal_percent_diff": deal_percent_diff,
                     "deal_confidence": confidence,
-                    "deal_confidence_reasons": _confidence_reasons(listing),
+                    "deal_confidence_reasons": reasons,
                 }
             )
         )

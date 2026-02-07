@@ -180,3 +180,39 @@ def test_explanation_fields_missing_without_price() -> None:
     assert listing.deal_reference_price is None
     assert listing.deal_percent_diff is None
     assert listing.deal_score is None
+
+
+def test_zero_benchmark_unscored() -> None:
+    """Zero benchmarks should skip deal scoring."""
+
+    listings = [
+        build_listing("l1", "Listing 1", 0.0, 10.0),
+        build_listing("l2", "Listing 2", 0.0, 10.0),
+        build_listing("l3", "Listing 3", 0.0, 10.0),
+    ]
+
+    scored = score_listings(listings)
+
+    for listing in scored:
+        assert listing.deal_reference_price == 0.0
+        assert listing.deal_percent_diff is None
+        assert listing.deal_score is None
+        assert "zero reference price" in listing.deal_confidence_reasons
+
+
+def test_positive_price_with_zero_benchmark_unscored() -> None:
+    """Non-zero prices should still be unscored with zero benchmark."""
+
+    listings = [
+        build_listing("l1", "Listing 1", 0.0, 10.0),
+        build_listing("l2", "Listing 2", 0.0, 10.0),
+        build_listing("l3", "Listing 3", 10.0, 10.0),
+    ]
+
+    scored = score_listings(listings)
+    target = next(item for item in scored if item.listing_id == "l3")
+
+    assert target.deal_reference_price == 0.0
+    assert target.deal_percent_diff is None
+    assert target.deal_score is None
+    assert "zero reference price" in target.deal_confidence_reasons
