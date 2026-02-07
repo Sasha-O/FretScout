@@ -7,3 +7,22 @@ Search used/vintage listings across sources, score relative value, and notify us
 
 ## Status
 In development.
+
+## Run
+1. Install dependencies: `pip install -r requirements.txt`
+2. Start the app: `streamlit run app.py`
+
+## Project structure
+```
+.
+├── app.py
+├── fretscout
+│   ├── alerts.py
+│   ├── connectors
+│   │   └── stub.py
+│   ├── db.py
+│   ├── models.py
+│   └── valuation.py
+├── README.md
+└── requirements.txt
+```
