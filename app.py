@@ -40,6 +40,7 @@ def render_listing(listing) -> None:
         )
     else:
         st.write("**Deal score:** Not enough data yet.")
+    st.caption("Deal Score uses item price only; shipping excluded.")
     st.markdown(f"[View listing]({listing.url})")
     st.divider()
 

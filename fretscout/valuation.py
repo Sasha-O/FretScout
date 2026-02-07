@@ -32,14 +32,10 @@ def _parse_price(value: object) -> float | None:
     return None
 
 
-def _all_in_price(listing: Listing) -> float | None:
-    """Return the all-in price for a listing."""
+def _listing_price(listing: Listing) -> float | None:
+    """Return the listing price for scoring purposes."""
 
-    price = _parse_price(listing.price)
-    if price is None:
-        return None
-    shipping = _parse_price(listing.shipping) or 0.0
-    return price + shipping
+    return _parse_price(listing.price)
 
 
 def _confidence_level(listing: Listing) -> str:
@@ -60,7 +56,9 @@ def score_listings(listings: Iterable[Listing]) -> list[Listing]:
     """Annotate listings with deal labels and confidence levels."""
 
     listings_list = list(listings)
-    priced = [price for listing in listings_list if (price := _all_in_price(listing)) is not None]
+    priced = [
+        price for listing in listings_list if (price := _listing_price(listing)) is not None
+    ]
 
     if len(priced) >= 3:
         benchmark = median(priced)
@@ -69,12 +67,12 @@ def score_listings(listings: Iterable[Listing]) -> list[Listing]:
 
     scored: list[Listing] = []
     for listing in listings_list:
-        all_in = _all_in_price(listing)
-        if benchmark is None or all_in is None:
+        price = _listing_price(listing)
+        if benchmark is None or price is None:
             label = None
-        elif all_in <= benchmark * 0.90:
+        elif price <= benchmark * 0.90:
             label = "Good"
-        elif all_in < benchmark * 1.10:
+        elif price < benchmark * 1.10:
             label = "Fair"
         else:
             label = "High"

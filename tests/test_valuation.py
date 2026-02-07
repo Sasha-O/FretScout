@@ -43,7 +43,7 @@ def test_score_listings_labels_with_median() -> None:
     assert labels["l3"] == "High"
 
 
-def test_missing_shipping_treated_as_zero() -> None:
+def test_missing_shipping_does_not_block_scoring() -> None:
     """Listings without shipping should still be scored."""
 
     listings = [
@@ -105,3 +105,38 @@ def test_confidence_levels() -> None:
     assert confidence["l1"] == "High"
     assert confidence["l2"] == "Medium"
     assert confidence["l3"] == "Low"
+
+
+def test_shipping_does_not_change_scoring() -> None:
+    """Shipping should not affect deal score, label, or confidence."""
+
+    baseline = [
+        build_listing("l1", "Good Listing", 100.0, 0.0),
+        build_listing("l2", "Fair Listing", 150.0, 10.0),
+        build_listing("l3", "High Listing", 200.0, 20.0),
+    ]
+    varied_shipping = [
+        build_listing("l1", "Good Listing", 100.0, 250.0),
+        build_listing("l2", "Fair Listing", 150.0, 5.0),
+        build_listing("l3", "High Listing", 200.0, None),
+    ]
+
+    baseline_scored = score_listings(baseline)
+    varied_scored = score_listings(varied_shipping)
+
+    baseline_map = {
+        listing.listing_id: (
+            listing.deal_label,
+            listing.deal_confidence,
+        )
+        for listing in baseline_scored
+    }
+    varied_map = {
+        listing.listing_id: (
+            listing.deal_label,
+            listing.deal_confidence,
+        )
+        for listing in varied_scored
+    }
+
+    assert baseline_map == varied_map
