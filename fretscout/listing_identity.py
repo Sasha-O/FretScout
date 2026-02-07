@@ -16,16 +16,29 @@ def _normalize_text(value: str) -> str:
 
 
 def _normalize_url(value: str) -> str:
-    cleaned = _normalize_text(value)
+    cleaned = value.strip()
     parts = urlsplit(cleaned)
     scheme = parts.scheme.lower()
     netloc = parts.netloc.lower()
     path = re.sub(r"/{2,}", "/", parts.path or "")
     if path.endswith("/") and path != "/":
         path = path.rstrip("/")
-    path = path.lower()
+
     query_pairs = parse_qsl(parts.query, keep_blank_values=True)
-    query = urlencode(sorted(query_pairs))
+    filtered_pairs: list[tuple[str, str]] = []
+    for key, val in query_pairs:
+        lowered = key.lower()
+        if lowered.startswith("utm_") or lowered in {
+            "gclid",
+            "fbclid",
+            "mc_cid",
+            "mc_eid",
+            "yclid",
+        }:
+            continue
+        filtered_pairs.append((key, val))
+    query = urlencode(filtered_pairs, doseq=True)
+    # Drop fragment since it is rarely identity-bearing.
     return urlunsplit((scheme, netloc, path, query, ""))
 
 
